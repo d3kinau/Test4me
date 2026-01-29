@@ -1,0 +1,64 @@
+# T-Pot: CUSTOM EDITION
+# Generated on: 2026-01-20 15:00:24
+networks:
+  honeypots_local: null
+  mailoney_local: null
+services:
+  tpotinit:
+    container_name: tpotinit
+    env_file:
+    - .env
+    restart: always
+    stop_grace_period: 60s
+    tmpfs:
+    - /tmp/etc:uid=2000,gid=2000
+    - /tmp/:uid=2000,gid=2000
+    network_mode: host
+    cap_add:
+    - NET_ADMIN
+    image: ${TPOT_REPO}/tpotinit:${TPOT_VERSION}
+    pull_policy: ${TPOT_PULL_POLICY}
+    volumes:
+    - ${TPOT_DOCKER_COMPOSE}:/tmp/tpot/docker-compose.yml:ro
+    - ${TPOT_DATA_PATH}/blackhole:/etc/blackhole
+    - ${TPOT_DATA_PATH}:/data
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+  honeypots:
+    container_name: honeypots
+    stdin_open: true
+    tty: true
+    restart: always
+    depends_on:
+      tpotinit:
+        condition: service_healthy
+    tmpfs:
+    - /tmp:uid=2000,gid=2000
+    networks:
+    - honeypots_local
+    ports:
+    - 110:110
+    - 143:143
+    - 80:80
+    image: ${TPOT_REPO}/honeypots:${TPOT_VERSION}
+    pull_policy: ${TPOT_PULL_POLICY}
+    read_only: true
+    volumes:
+    - ${TPOT_DATA_PATH}/honeypots/log:/var/log/honeypots
+    - /opt/owa-template:/opt/honeypots/honeypots/data:ro
+  mailoney:
+    container_name: mailoney
+    stdin_open: true
+    tty: true
+    restart: always
+    depends_on:
+      tpotinit:
+        condition: service_healthy
+    networks:
+    - mailoney_local
+    ports:
+    - 0.0.0.0:25:25
+    image: ${TPOT_REPO}/mailoney:${TPOT_VERSION}
+    pull_policy: ${TPOT_PULL_POLICY}
+    read_only: true
+    volumes:
+    - ${TPOT_DATA_PATH}/mailoney/log:/opt/mailone/logs
